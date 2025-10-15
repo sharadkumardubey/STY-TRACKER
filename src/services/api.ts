@@ -1,269 +1,144 @@
+// Firebase API - Use this file for Firebase integration
+// This file replaces the dummy API in api.ts
+
+import { authService, UserProfile } from './firebase/auth.service';
+import { usersService } from './firebase/users.service';
+import { topicsService } from './firebase/topics.service';
+import { resultsService } from './firebase/results.service';
+import { calendarService, DailyProgress } from './firebase/calendar.service';
 import { User } from '@/store/slices/usersSlice';
 import { Topic, UserTopicProgress } from '@/store/slices/topicsSlice';
 import { Result, ChartData } from '@/store/slices/resultsSlice';
 
-// Dummy data
-const dummyUsers: User[] = [
-  {
-    id: '1',
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1234567890',
-    role: 'user',
-    createdAt: '2025-01-01',
-  },
-  {
-    id: '2',
-    name: 'Jane Smith',
-    email: 'jane@example.com',
-    phone: '+1234567891',
-    role: 'user',
-    createdAt: '2025-01-02',
-  },
-];
-
-const dummyTopics: Topic[] = [
-  {
-    id: 't1',
-    userId: '1',
-    topics: [
-      { id: 'ti1', title: 'React Basics', url: 'https://example.com/react' },
-      { id: 'ti2', title: 'TypeScript Fundamentals', url: 'https://example.com/ts' },
-    ],
-    createdAt: '2025-01-05',
-  },
-];
-
-const dummyResults: Result[] = [
-  {
-    id: 'r1',
-    userId: '1',
-    userName: 'John Doe',
-    topicId: 't1',
-    topicTitle: 'React Basics',
-    score: 85,
-    completedAt: '2025-01-10T10:30:00',
-    date: '2025-01-10',
-  },
-  {
-    id: 'r2',
-    userId: '2',
-    userName: 'Jane Smith',
-    topicId: 't1',
-    topicTitle: 'TypeScript Fundamentals',
-    score: 92,
-    completedAt: '2025-01-11T14:20:00',
-    date: '2025-01-11',
-  },
-];
-
-// Simulate API delay
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 // Auth API
 export const authAPI = {
-  login: async (phoneOrEmail: string, password: string) => {
-    await delay(500);
+  login: async (emailOrPhone: string, password: string): Promise<UserProfile> => {
+    // For now, we'll use email authentication
+    // TODO: Implement phone authentication if needed
+    return await authService.signIn(emailOrPhone, password);
+  },
 
-    // Dummy login - check if admin
-    if (phoneOrEmail === 'admin' && password === 'admin') {
-      return {
-        id: 'admin',
-        name: 'Admin User',
-        email: 'admin@example.com',
-        phone: '+1234567899',
-        role: 'admin' as const,
-      };
-    }
+  signUp: async (
+    email: string,
+    password: string,
+    name: string,
+    phone: string,
+    role: 'admin' | 'user' = 'user'
+  ): Promise<UserProfile> => {
+    return await authService.signUp(email, password, name, phone, role);
+  },
 
-    // Check against dummy users
-    const user = dummyUsers.find(u => u.email === phoneOrEmail || u.phone === phoneOrEmail);
-    if (user) {
-      return user;
-    }
+  logout: async (): Promise<void> => {
+    return await authService.signOut();
+  },
 
-    throw new Error('Invalid credentials');
+  getCurrentUser: () => {
+    return authService.getCurrentUser();
+  },
+
+  getUserProfile: async (uid: string): Promise<UserProfile | null> => {
+    return await authService.getUserProfile(uid);
   },
 };
 
 // Users API
 export const usersAPI = {
   getAll: async (): Promise<User[]> => {
-    await delay(300);
-    return [...dummyUsers];
+    return await usersService.getAll();
   },
 
   getById: async (id: string): Promise<User | undefined> => {
-    await delay(200);
-    return dummyUsers.find(u => u.id === id);
+    const user = await usersService.getById(id);
+    return user || undefined;
+  },
+
+  getByRole: async (role: 'admin' | 'user'): Promise<User[]> => {
+    return await usersService.getByRole(role);
   },
 
   create: async (userData: Omit<User, 'id' | 'createdAt'>): Promise<User> => {
-    await delay(400);
-    const newUser: User = {
-      ...userData,
-      id: `user_${Date.now()}`,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    dummyUsers.push(newUser);
-    return newUser;
+    return await usersService.create({ ...userData, createdAt: '' });
   },
 
   update: async (id: string, userData: Partial<User>): Promise<User> => {
-    await delay(400);
-    const index = dummyUsers.findIndex(u => u.id === id);
-    if (index === -1) throw new Error('User not found');
-
-    dummyUsers[index] = { ...dummyUsers[index], ...userData };
-    return dummyUsers[index];
+    return await usersService.update(id, userData);
   },
 
   delete: async (id: string): Promise<void> => {
-    await delay(300);
-    const index = dummyUsers.findIndex(u => u.id === id);
-    if (index !== -1) {
-      dummyUsers.splice(index, 1);
-    }
+    return await usersService.delete(id);
   },
 };
 
 // Topics API
 export const topicsAPI = {
   getAll: async (): Promise<Topic[]> => {
-    await delay(300);
-    return [...dummyTopics];
+    return await topicsService.getAll();
   },
 
   getByUserId: async (userId: string): Promise<Topic[]> => {
-    await delay(300);
-    return dummyTopics.filter(t => t.userId === userId);
+    return await topicsService.getByUserId(userId);
   },
 
   create: async (topicData: Omit<Topic, 'id' | 'createdAt'>): Promise<Topic> => {
-    await delay(400);
-    const newTopic: Topic = {
-      ...topicData,
-      id: `topic_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-    };
-    dummyTopics.push(newTopic);
-    return newTopic;
+    return await topicsService.create({ ...topicData, createdAt: '' });
   },
 
-  getUserProgress: async (_userId: string): Promise<UserTopicProgress[]> => {
-    await delay(300);
-    // Return dummy progress data
-    return [
-      { topicId: 't1', topicItemId: 'ti1', completed: true, completedAt: '2025-01-10' },
-      { topicId: 't1', topicItemId: 'ti2', completed: false },
-    ];
+  update: async (id: string, topicData: Partial<Topic>): Promise<Topic> => {
+    return await topicsService.update(id, topicData);
   },
 
-  updateProgress: async (progress: UserTopicProgress): Promise<UserTopicProgress> => {
-    await delay(300);
-    return progress;
+  delete: async (id: string): Promise<void> => {
+    return await topicsService.delete(id);
+  },
+
+  getUserProgress: async (userId: string): Promise<UserTopicProgress[]> => {
+    return await topicsService.getUserProgress(userId);
+  },
+
+  updateProgress: async (
+    userId: string,
+    progress: UserTopicProgress
+  ): Promise<UserTopicProgress> => {
+    return await topicsService.updateProgress(userId, progress);
   },
 };
 
 // Results API
 export const resultsAPI = {
   getByDate: async (date: string): Promise<Result[]> => {
-    await delay(300);
-    return dummyResults.filter(r => r.date === date);
+    return await resultsService.getByDate(date);
   },
 
-  getChartData: async (period: 'day' | 'week' | 'month' | 'year'): Promise<ChartData[]> => {
-    await delay(400);
+  getByUserId: async (userId: string): Promise<Result[]> => {
+    return await resultsService.getByUserId(userId);
+  },
 
-    // Generate dummy chart data based on period
-    const data: ChartData[] = [];
-    const today = new Date();
+  getChartData: async (
+    period: 'day' | 'week' | 'month' | 'year',
+    userId?: string
+  ): Promise<ChartData[]> => {
+    return await resultsService.getChartData(period, userId);
+  },
 
-    let days = 1;
-    if (period === 'week') days = 7;
-    else if (period === 'month') days = 30;
-    else if (period === 'year') days = 365;
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toISOString().split('T')[0];
-
-      data.push({
-        date: dateStr,
-        score: Math.floor(Math.random() * 100),
-        count: Math.floor(Math.random() * 10),
-      });
-    }
-
-    return data;
+  create: async (resultData: Omit<Result, 'id'>): Promise<Result> => {
+    return await resultsService.create(resultData);
   },
 };
 
-// Calendar Progress API
-export interface DailyProgress {
-  date: string;
-  userId: string;
-  userName: string;
-  totalTopics: number;
-  completedTopics: number;
-  completionPercentage: number;
-}
-
+// Calendar API
 export const calendarAPI = {
   getMonthProgress: async (year: number, month: number): Promise<DailyProgress[]> => {
-    await delay(400);
-
-    // Generate dummy progress data for the month
-    const progress: DailyProgress[] = [];
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-      // Add progress for each user
-      dummyUsers.forEach(user => {
-        const totalTopics = 10;
-        const completedTopics = Math.floor(Math.random() * (totalTopics + 1));
-
-        progress.push({
-          date,
-          userId: user.id,
-          userName: user.name,
-          totalTopics,
-          completedTopics,
-          completionPercentage: Math.round((completedTopics / totalTopics) * 100),
-        });
-      });
-    }
-
-    return progress;
+    return await calendarService.getMonthProgress(year, month);
   },
 
-  getUserMonthProgress: async (userId: string, year: number, month: number): Promise<DailyProgress[]> => {
-    await delay(300);
-
-    const progress: DailyProgress[] = [];
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const user = dummyUsers.find(u => u.id === userId);
-
-    if (!user) return [];
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-      const totalTopics = 10;
-      const completedTopics = Math.floor(Math.random() * (totalTopics + 1));
-
-      progress.push({
-        date,
-        userId: user.id,
-        userName: user.name,
-        totalTopics,
-        completedTopics,
-        completionPercentage: Math.round((completedTopics / totalTopics) * 100),
-      });
-    }
-
-    return progress;
+  getUserMonthProgress: async (
+    userId: string,
+    year: number,
+    month: number
+  ): Promise<DailyProgress[]> => {
+    return await calendarService.getUserMonthProgress(userId, year, month);
   },
 };
+
+// Re-export types
+export type { DailyProgress };
